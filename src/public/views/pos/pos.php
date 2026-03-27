@@ -14,7 +14,7 @@ $usePersistedFilters = isset($noData) && $noData;
         <div class="card pos-container-css">
           <div class="card-body">
             <div class="col-12 text-center">
-              <h3 class="mb-0">Point-of-Sale Sales Reports</h3>
+              <h3 class="mb-0">Point-of-Sale <b>POS</b> Sales Reports</h3>
             </div>
             <form method="get">
               <div class="mt-4 p-3 pos-container-css">
