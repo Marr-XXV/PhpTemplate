@@ -1,0 +1,8 @@
+package-lock.json
+node_modules/
+dist/
+build/
+.DS_Store
+.env
+vendor/
+src/database/master_data.sql

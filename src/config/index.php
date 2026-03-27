@@ -1,0 +1,54 @@
+<?php
+define("APP_NAME", "phpTemplate");
+// Configured for Docker environment
+define("database_name", getenv('MYSQL_DB') ?: 'phpTemplate');
+define("username", getenv('MYSQL_USER') ?: 'root');
+define("password", getenv('MYSQL_PASSWORD') ?: '');
+define("host", getenv('MYSQL_HOST') ?: 'db');
+define("port", "3306");
+try {
+    $dsn = "mysql:host=". host .";port=". port .";dbname=". database_name .";charset=utf8";
+
+    $options = [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
+    ];
+    $pdo = new PDO($dsn, username, password, $options);
+} catch (PDOException $e) {
+    echo "Connection failed: " . $e->getMessage();
+    exit();
+}
+function assets($path = '') {
+    // Get the root directory of the project
+    $basePath = $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'];
+
+    // Append the "public" folder if your assets are stored there
+    return $basePath . '/public/' . ltrim($path, '/');
+}
+// require __DIR__ . "/../app/Models/Employee.php";
+
+// $Employee = new Employee($pdo);
+// $loginInfo = $Employee->findById("1");
+$_SESSION['id'] = 1;
+$_SESSION['name'] = "Seriemar Rodriguez Arroyo";
+$_SESSION['age'] = "23";
+$_SESSION['type'] = 1;
+$_SESSION['department'] = 1;
+$_SESSION['position'] = "BIGGS Intern";
+
+$basePath = "/";
+require_once __DIR__ . '/../app/models/System.php';
+require_once __DIR__ . "/../app/models/User.php";
+$User = new User($pdo);
+$System = new System($pdo);
+$User->createTableIfNotExists();
+$System->createTableIfNotExists();
+$user = $User->first(['status' => 1]);
+$system = $System->first(['status' => 1]);
+if(is_null($system) || is_null($user)){
+    require_once __DIR__ . "/../app/controllers/SystemController.php";
+    $SysControl = new SystemController();
+    $SysControl->setup();
+    exit();
+}
+?>
