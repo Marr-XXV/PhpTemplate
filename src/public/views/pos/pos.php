@@ -326,7 +326,7 @@ $usePersistedFilters = isset($noData) && $noData;
                       </div>
                       <select class="multi-select-hidden" name="index_field[]" multiple>
                         <?php
-                        $persistedIndex = $usePersistedFilters && isset($_GET['index_field']) ? (array)$_GET['index_field'] : [];
+                        $persistedIndex = isset($_GET['index_field']) ? (array)$_GET['index_field'] : [];
                         foreach ($reportFields as $key => $label):
                         ?>
                           <option value="<?= $key ?>" <?= in_array($key, $persistedIndex, true) ? 'selected' : '' ?>>
@@ -352,7 +352,7 @@ $usePersistedFilters = isset($noData) && $noData;
                       </div>
                       <select class="multi-select-hidden" name="column_field[]" multiple>
                         <?php
-                        $persistedColumn = $usePersistedFilters && isset($_GET['column_field']) ? (array)$_GET['column_field'] : [];
+                        $persistedColumn = isset($_GET['column_field']) ? (array)$_GET['column_field'] : [];
                         foreach ($reportFields as $key => $label):
                         ?>
                           <option value="<?= $key ?>" <?= in_array($key, $persistedColumn, true) ? 'selected' : '' ?>>
@@ -365,6 +365,7 @@ $usePersistedFilters = isset($noData) && $noData;
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Value</label>
                     <select class="form-control" name="value_field">
+                      <option value="" <?= !isset($_GET['value_field']) || $_GET['value_field'] === '' ? 'selected' : '' ?>>Select Value</option>
                       <?php
                       $valueFields = [
                         'amount' => 'Sales',
@@ -372,7 +373,7 @@ $usePersistedFilters = isset($noData) && $noData;
                         'unit_price' => 'Unit Price',
                         'transaction_number' => 'Transaction Number',
                       ];
-                      $persistedValue = $usePersistedFilters && isset($_GET['value_field']) ? $_GET['value_field'] : null;
+                      $persistedValue = isset($_GET['value_field']) ? $_GET['value_field'] : null;
                       foreach ($valueFields as $key => $label):
                       ?>
                         <option value="<?= $key ?>" <?= $persistedValue === $key ? 'selected' : '' ?>>
@@ -450,10 +451,10 @@ $usePersistedFilters = isset($noData) && $noData;
                       // ($selectedIndexFields and $selectedColumnFields are already set by the controller)
                       // If not set, use defaults
                       if (!isset($selectedIndexFields)) {
-                          $selectedIndexFields = isset($_GET['index_field']) ? (array)$_GET['index_field'] : ['branch'];
+                          $selectedIndexFields = isset($_GET['index_field']) ? (array)$_GET['index_field'] : [];
                       }
                       if (!isset($selectedColumnFields)) {
-                          $selectedColumnFields = isset($_GET['column_field']) ? (array)$_GET['column_field'] : ['product_name'];
+                          $selectedColumnFields = isset($_GET['column_field']) ? (array)$_GET['column_field'] : [];
                       }
                       
                       $currentValueField = $_GET['value_field'] ?? 'amount';
@@ -464,18 +465,12 @@ $usePersistedFilters = isset($noData) && $noData;
                           $validIndexFields[] = $field;
                         }
                       }
-                      if (empty($validIndexFields)) {
-                        $validIndexFields = ['branch'];
-                      }
 
                       $validColumnFields = [];
                       foreach ($selectedColumnFields as $field) {
                         if (isset($reportFields[$field]) && !in_array($field, $validColumnFields, true)) {
                           $validColumnFields[] = $field;
                         }
-                      }
-                      if (empty($validColumnFields)) {
-                        $validColumnFields = ['product_name'];
                       }
 
                       $valueFields = [
@@ -592,8 +587,8 @@ $usePersistedFilters = isset($noData) && $noData;
             $exportTransactionTypes = isset($_GET['transaction_type']) ? (array)$_GET['transaction_type'] : [];
             
             // Use the same intelligently computed fields from the controller
-            $finalIndexFields = isset($selectedIndexFields) ? $selectedIndexFields : ['branch'];
-            $finalColumnFields = isset($selectedColumnFields) ? $selectedColumnFields : ['product_name'];
+            $finalIndexFields = isset($selectedIndexFields) ? $selectedIndexFields : [];
+            $finalColumnFields = isset($selectedColumnFields) ? $selectedColumnFields : [];
             
             // Track if we're in all-columns mode for export
             $exportMode = isset($showAllColumnsMode) && $showAllColumnsMode ? 'all_columns' : 'aggregated';
