@@ -407,7 +407,7 @@ $usePersistedFilters = isset($noData) && $noData;
     </div>
     <div class="row">
       <div class="col-12">
-        <div class="card rg-container-css">
+        <div id="report-generated-section" class="card rg-container-css">
           <div class="card-header d-flex justify-content-between align-items-center">
             <h3 class="mb-0">Report Generated</h3>
             <button
@@ -424,7 +424,11 @@ $usePersistedFilters = isset($noData) && $noData;
               </span>
             </button>
           </div>
-          <div class="card-body">
+          <div class="card-body report-generated-body">
+            <div class="report-preview-loading" aria-hidden="true">
+              <span class="report-preview-loading-spinner"></span>
+              <span class="report-preview-loading-text">Loading...</span>
+            </div>
             <?php if (!empty($previewRows)): ?>
               <p class="text-muted mb-2">
                 Showing a preview of the first 30 rows. Export to view the full report.
@@ -719,6 +723,36 @@ require __DIR__ . "/../template/footer.php";
 
   .rg-container-css {
     box-shadow: rgba(60, 64, 67, 0.3) 0px 1px 2px 0px, rgba(60, 64, 67, 0.15) 0px 2px 6px 2px;
+  }
+
+  .report-generated-body {
+    position: relative;
+  }
+
+  .report-preview-loading {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    z-index: 5;
+    font-weight: 600;
+    color: #0b5ed7;
+  }
+
+  .report-generated-body.is-loading .report-preview-loading {
+    display: flex;
+  }
+
+  .report-preview-loading-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(11, 94, 215, 0.25);
+    border-top-color: #0b5ed7;
+    border-radius: 50%;
+    animation: report-btn-spin 0.8s linear infinite;
   }
 
   .multi-select-wrapper {
@@ -1030,6 +1064,33 @@ require __DIR__ . "/../template/footer.php";
   document.addEventListener("DOMContentLoaded", function() {
     var reportActionButtons = document.querySelectorAll(".js-report-action-btn");
     var exportResetTimeoutId = null;
+    var reportGeneratedSection = document.getElementById("report-generated-section");
+    var reportGeneratedBody = document.querySelector(".report-generated-body");
+
+    function shouldAutoScrollToReport() {
+      var urlParams = new URLSearchParams(window.location.search);
+      var action = urlParams.get("action");
+      var fromSubmit = sessionStorage.getItem("pos-scroll-to-report") === "1";
+      var fromAction = action === "filter_generate" || action === "filter";
+      return fromSubmit || fromAction;
+    }
+
+    function scrollToReportSection() {
+      if (!reportGeneratedSection || !shouldAutoScrollToReport()) {
+        return;
+      }
+      sessionStorage.removeItem("pos-scroll-to-report");
+      window.setTimeout(function() {
+        reportGeneratedSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 150);
+    }
+
+    function triggerImmediateReportScroll() {
+      if (!reportGeneratedSection) {
+        return;
+      }
+      reportGeneratedSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
 
     function setButtonLoadingState(button) {
       if (!button) {
@@ -1066,6 +1127,8 @@ require __DIR__ . "/../template/footer.php";
       form.addEventListener("submit", function(event) {
         var submitter = event.submitter || document.activeElement;
         var isExportAction = submitter && submitter.classList.contains("btn-report-export");
+        var submitActionValue = submitter && submitter.name === "action" ? submitter.value : "";
+        var isPreviewGenerationAction = submitActionValue === "filter_generate" || submitActionValue === "filter";
 
         reportActionButtons.forEach(function(button) {
           button.disabled = true;
@@ -1073,6 +1136,14 @@ require __DIR__ . "/../template/footer.php";
 
         if (submitter && submitter.classList.contains("js-report-action-btn")) {
           setButtonLoadingState(submitter);
+        }
+
+        if (isPreviewGenerationAction) {
+          sessionStorage.setItem("pos-scroll-to-report", "1");
+          triggerImmediateReportScroll();
+          if (reportGeneratedBody) {
+            reportGeneratedBody.classList.add("is-loading");
+          }
         }
 
         if (isExportAction) {
@@ -1098,6 +1169,8 @@ require __DIR__ . "/../template/footer.php";
       window.addEventListener("pageshow", function() {
         resetAllReportActionButtons();
       });
+
+      scrollToReportSection();
     }
 
     var startPicker = flatpickr("#start_date", {
