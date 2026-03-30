@@ -349,7 +349,7 @@ class PosSalesReportController extends Controller
                 $sql = $sqlBase . " LIMIT 100";
 
                 $reportRows = $this->query($sql, $params);
-                $previewRows = array_slice($reportRows, 0, 30);
+                $previewRows = array_slice($reportRows, 0, 20);
                 $noData = empty($reportRows);
 
                 if ($action === 'export') {
@@ -546,7 +546,7 @@ class PosSalesReportController extends Controller
                 $sqlPreview = $sql . " LIMIT 100";
                 $reportRows = $this->query($sqlPreview, $params);
                 
-                $previewRows = array_slice($reportRows, 0, 30);
+                $previewRows = array_slice($reportRows, 0, 20);
                 $noData = empty($reportRows);
 
                 if ($action === 'export') {

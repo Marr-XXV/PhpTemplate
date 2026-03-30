@@ -431,7 +431,7 @@ $usePersistedFilters = isset($noData) && $noData;
             </div>
             <?php if (!empty($previewRows)): ?>
               <p class="text-muted mb-2">
-                Showing a preview of the first 30 rows. Export to view the full report.
+                Showing a preview of the first 20 rows. Export to view the full report.
               </p>
             <?php endif; ?>
             <div class="table-responsive">
