@@ -14,7 +14,7 @@ $usePersistedFilters = isset($noData) && $noData;
         <div class="card pos-container-css">
           <div class="card-body">
             <div class="col-12 text-center">
-              <h3 class="mb-0">Point-of-Sale <b>POS</b> Sales Reports</h3>
+              <h3 class="mb-0">Point-of-Sale (POS) Sales Reports</h3>
             </div>
             <form method="get">
               <div class="mt-4 p-3 pos-container-css">
@@ -409,8 +409,18 @@ $usePersistedFilters = isset($noData) && $noData;
         <div class="card rg-container-css">
           <div class="card-header d-flex justify-content-between align-items-center">
             <h3 class="mb-0">Report Generated</h3>
-            <button type="submit" form="pos-export-form" class="btn btn-success btn-sm btn-report-export">
-              <img src="public/assets/images/export_img1.png" alt="icon" width="20" height="20"> Export
+            <button
+              type="submit"
+              form="pos-export-form"
+              class="btn btn-success btn-sm btn-report-export js-report-action-btn"
+              data-loading-text="Exporting...">
+              <span class="btn-default-content">
+                <img src="public/assets/images/export_img1.png" alt="icon" width="20" height="20"> Export
+              </span>
+              <span class="btn-loading-content" aria-hidden="true">
+                <span class="btn-loading-spinner"></span>
+                <span class="btn-loading-text">Exporting...</span>
+              </span>
             </button>
           </div>
           <div class="card-body">
@@ -690,6 +700,11 @@ require __DIR__ . "/../template/footer.php";
   }
 
   .btn-report-export {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 92px;
     padding-left: 5px;
     padding-right: 5px;
     font-size: 12px;
@@ -1018,8 +1033,8 @@ require __DIR__ . "/../template/footer.php";
 </style>
 <script>
   document.addEventListener("DOMContentLoaded", function() {
-    var reportForm = document.querySelector(".pos-container-css form[method='get']");
-    var reportActionButtons = reportForm ? reportForm.querySelectorAll(".js-report-action-btn") : [];
+    var reportActionButtons = document.querySelectorAll(".js-report-action-btn");
+    var exportResetTimeoutId = null;
 
     function setButtonLoadingState(button) {
       if (!button) {
@@ -1034,9 +1049,29 @@ require __DIR__ . "/../template/footer.php";
       button.setAttribute("aria-busy", "true");
     }
 
-    if (reportForm && reportActionButtons.length > 0) {
-      reportForm.addEventListener("submit", function(event) {
+    function resetAllReportActionButtons() {
+      if (exportResetTimeoutId !== null) {
+        clearTimeout(exportResetTimeoutId);
+        exportResetTimeoutId = null;
+      }
+
+      reportActionButtons.forEach(function(button) {
+        button.disabled = false;
+        button.classList.remove("is-loading");
+        button.removeAttribute("aria-busy");
+      });
+    }
+
+    function attachSubmitLock(form) {
+      if (!form || form.dataset.reportActionBound === "true") {
+        return;
+      }
+
+      form.dataset.reportActionBound = "true";
+      form.addEventListener("submit", function(event) {
         var submitter = event.submitter || document.activeElement;
+        var isExportAction = submitter && submitter.classList.contains("btn-report-export");
+
         reportActionButtons.forEach(function(button) {
           button.disabled = true;
         });
@@ -1044,6 +1079,29 @@ require __DIR__ . "/../template/footer.php";
         if (submitter && submitter.classList.contains("js-report-action-btn")) {
           setButtonLoadingState(submitter);
         }
+
+        if (isExportAction) {
+          // Downloads can keep the page active, so restore controls when focus returns.
+          exportResetTimeoutId = window.setTimeout(function() {
+            resetAllReportActionButtons();
+          }, 10000);
+        }
+      });
+    }
+
+    if (reportActionButtons.length > 0) {
+      reportActionButtons.forEach(function(button) {
+        var formId = button.getAttribute("form");
+        var targetForm = formId ? document.getElementById(formId) : button.closest("form");
+        attachSubmitLock(targetForm);
+      });
+
+      window.addEventListener("focus", function() {
+        resetAllReportActionButtons();
+      });
+
+      window.addEventListener("pageshow", function() {
+        resetAllReportActionButtons();
       });
     }
 
