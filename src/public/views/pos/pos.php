@@ -30,7 +30,7 @@ $usePersistedFilters = isset($noData) && $noData;
                         class="form-control"
                         placeholder="Select date"
                         value="<?=
-                                $usePersistedFilters && isset($_GET['start_date'])
+                                isset($_GET['start_date'])
                                   ? htmlspecialchars($_GET['start_date'])
                                   : (isset($defaultStartDate) ? htmlspecialchars($defaultStartDate) : '')
                                 ?>">
@@ -51,7 +51,7 @@ $usePersistedFilters = isset($noData) && $noData;
                         class="form-control"
                         placeholder="Select date"
                         value="<?=
-                                $usePersistedFilters && isset($_GET['end_date'])
+                                isset($_GET['end_date'])
                                   ? htmlspecialchars($_GET['end_date'])
                                   : (isset($defaultEndDate) ? htmlspecialchars($defaultEndDate) : '')
                                 ?>">
@@ -91,7 +91,7 @@ $usePersistedFilters = isset($noData) && $noData;
                       </div>
                       <select class="multi-select-hidden" name="payment_mode[]" multiple>
                         <?php
-                        $persistedPayment = $usePersistedFilters && isset($_GET['payment_mode']) ? (array)$_GET['payment_mode'] : [];
+                        $persistedPayment = isset($_GET['payment_mode']) ? (array)$_GET['payment_mode'] : [];
                         if (isset($paymentModes)):
                           foreach ($paymentModes as $row):
                             $value = $row['payment_name'];
@@ -125,7 +125,7 @@ $usePersistedFilters = isset($noData) && $noData;
                       </div>
                       <select class="multi-select-hidden" name="store[]" multiple>
                         <?php
-                        $persistedStore = $usePersistedFilters && isset($_GET['store']) ? (array)$_GET['store'] : [];
+                        $persistedStore = isset($_GET['store']) ? (array)$_GET['store'] : [];
                         if (isset($stores)):
                           foreach ($stores as $row):
                             $value = $row['branch'];
@@ -159,7 +159,7 @@ $usePersistedFilters = isset($noData) && $noData;
                       </div>
                       <select class="multi-select-hidden" name="discount[]" multiple>
                         <?php
-                        $persistedDiscount = $usePersistedFilters && isset($_GET['discount']) ? (array)$_GET['discount'] : [];
+                        $persistedDiscount = isset($_GET['discount']) ? (array)$_GET['discount'] : [];
                         if (isset($discounts)):
                           foreach ($discounts as $row):
                             $value = $row['discount_name'];
@@ -193,7 +193,7 @@ $usePersistedFilters = isset($noData) && $noData;
                       </div>
                       <select class="multi-select-hidden" name="product_name[]" multiple>
                         <?php
-                        $persistedProduct = $usePersistedFilters && isset($_GET['product_name']) ? (array)$_GET['product_name'] : [];
+                        $persistedProduct = isset($_GET['product_name']) ? (array)$_GET['product_name'] : [];
                         if (isset($productNames)):
                           foreach ($productNames as $row):
                             $value = $row['product_name'];
@@ -227,7 +227,7 @@ $usePersistedFilters = isset($noData) && $noData;
                       </div>
                       <select class="multi-select-hidden" name="department_name[]" multiple>
                         <?php
-                        $persistedDepartment = $usePersistedFilters && isset($_GET['department_name']) ? (array)$_GET['department_name'] : [];
+                        $persistedDepartment = isset($_GET['department_name']) ? (array)$_GET['department_name'] : [];
                         if (isset($departments)):
                           foreach ($departments as $row):
                             $value = $row['department_name'];
@@ -261,7 +261,7 @@ $usePersistedFilters = isset($noData) && $noData;
                       </div>
                       <select class="multi-select-hidden" name="transaction_type[]" multiple>
                         <?php
-                        $persistedTransaction = $usePersistedFilters && isset($_GET['transaction_type']) ? (array)$_GET['transaction_type'] : [];
+                        $persistedTransaction = isset($_GET['transaction_type']) ? (array)$_GET['transaction_type'] : [];
                         if (isset($transactionTypes)):
                           foreach ($transactionTypes as $row):
                             $value = $row['transaction_type'];
