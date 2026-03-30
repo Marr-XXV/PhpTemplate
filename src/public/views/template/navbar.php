@@ -17,7 +17,7 @@
             <ul>
               <li>
                 <span>
-                  7 Weeks
+                  8 Weeks
                 </span>
                 <p>On-the-Job Training</p>
               </li>
