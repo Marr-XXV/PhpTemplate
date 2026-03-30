@@ -400,18 +400,12 @@ class PosSalesReportController extends Controller
                         $selectedIndexFields[] = $field;
                     }
                 }
-                if (empty($selectedIndexFields)) {
-                    $selectedIndexFields = ['branch'];
-                }
 
                 $selectedColumnFields = [];
                 foreach ($columnFields as $field) {
                     if (isset($dimensionMap[$field]) && !in_array($field, $selectedColumnFields, true)) {
                         $selectedColumnFields[] = $field;
                     }
-                }
-                if (empty($selectedColumnFields)) {
-                    $selectedColumnFields = ['product_name'];
                 }
 
                 $valueKey = isset($valueMap[$valueField]) ? $valueField : 'amount';
