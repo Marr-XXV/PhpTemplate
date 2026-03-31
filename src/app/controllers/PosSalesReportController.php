@@ -6,54 +6,67 @@ class PosSalesReportController extends Controller
     {
         $action = $_GET['action'] ?? null;
 
-        $paymentModes = $this->query("
-            SELECT DISTINCT TRIM(BOTH '\"' FROM payment_name) AS payment_name
-            FROM biggs_loyalty.master_data
-            WHERE payment_name IS NOT NULL AND payment_name <> ''
-            ORDER BY payment_name
-        ");
+        $filterLoadError = null;
 
-        $stores = $this->query("
-            SELECT DISTINCT branch
-            FROM biggs_loyalty.master_data
-            WHERE branch IS NOT NULL AND branch <> ''
-            ORDER BY branch
-        ");
+        try {
+            $paymentModes = $this->query("
+                SELECT DISTINCT TRIM(BOTH '\"' FROM payment_name) AS payment_name
+                FROM biggs_loyalty.master_data
+                WHERE payment_name IS NOT NULL AND payment_name <> ''
+                ORDER BY payment_name
+            ");
 
-        $discounts = $this->query("
-            SELECT DISTINCT TRIM(BOTH '\"' FROM discount_name) AS discount_name
-            FROM biggs_loyalty.master_data
-            WHERE discount_name IS NOT NULL AND discount_name <> ''
-            ORDER BY discount_name
-        ");
+            $stores = $this->query("
+                SELECT DISTINCT branch
+                FROM biggs_loyalty.master_data
+                WHERE branch IS NOT NULL AND branch <> ''
+                ORDER BY branch
+            ");
 
-        $productNames = $this->query("
-            SELECT DISTINCT TRIM(BOTH '\"' FROM product_name) AS product_name
-            FROM biggs_loyalty.master_data
-            WHERE product_name IS NOT NULL AND product_name <> ''
-            ORDER BY product_name
-        ");
+            $discounts = $this->query("
+                SELECT DISTINCT TRIM(BOTH '\"' FROM discount_name) AS discount_name
+                FROM biggs_loyalty.master_data
+                WHERE discount_name IS NOT NULL AND discount_name <> ''
+                ORDER BY discount_name
+            ");
 
-        $departments = $this->query("
-            SELECT DISTINCT TRIM(BOTH '\"' FROM department_name) AS department_name
-            FROM biggs_loyalty.master_data
-            WHERE department_name IS NOT NULL AND department_name <> ''
-            ORDER BY department_name
-        ");
+            $productNames = $this->query("
+                SELECT DISTINCT TRIM(BOTH '\"' FROM product_name) AS product_name
+                FROM biggs_loyalty.master_data
+                WHERE product_name IS NOT NULL AND product_name <> ''
+                ORDER BY product_name
+            ");
 
-        $transactionTypes = $this->query("
-            SELECT DISTINCT TRIM(BOTH '\"' FROM transaction_type) AS transaction_type
-            FROM biggs_loyalty.master_data
-            WHERE transaction_type IS NOT NULL AND transaction_type <> ''
-            ORDER BY transaction_type
-        ");
+            $departments = $this->query("
+                SELECT DISTINCT TRIM(BOTH '\"' FROM department_name) AS department_name
+                FROM biggs_loyalty.master_data
+                WHERE department_name IS NOT NULL AND department_name <> ''
+                ORDER BY department_name
+            ");
 
-        $dateRange = $this->query("
-            SELECT MIN(date) AS min_date
-            FROM biggs_loyalty.master_data
-        ");
+            $transactionTypes = $this->query("
+                SELECT DISTINCT TRIM(BOTH '\"' FROM transaction_type) AS transaction_type
+                FROM biggs_loyalty.master_data
+                WHERE transaction_type IS NOT NULL AND transaction_type <> ''
+                ORDER BY transaction_type
+            ");
 
-        $minDate = isset($dateRange[0]['min_date']) ? $dateRange[0]['min_date'] : null;
+            $dateRangeRow = $this->query("
+                SELECT MIN(date) AS min_date
+                FROM biggs_loyalty.master_data
+            ");
+        } catch (PDOException $e) {
+            $filterLoadError = 'Could not load filter options: ' . $e->getMessage();
+            $paymentModes    = [];
+            $stores          = [];
+            $discounts       = [];
+            $productNames    = [];
+            $departments     = [];
+            $transactionTypes = [];
+            $dateRangeRow    = [];
+        }
+
+        $minDate = isset($dateRangeRow[0]['min_date']) ? $dateRangeRow[0]['min_date'] : null;
 
         $currentDateTime = $this->getDate();
         if ($currentDateTime && $currentDateTime !== "Failed to retrieve datetime.") {
@@ -69,6 +82,15 @@ class PosSalesReportController extends Controller
                        isset($_GET['discount']) || isset($_GET['product_name']) || 
                        isset($_GET['department_name']) || isset($_GET['transaction_type']);
         
+        // --- Date validation helper ---
+        $validateDate = function ($value) {
+            if (empty($value)) {
+                return null;
+            }
+            $d = DateTime::createFromFormat('Y-m-d', $value);
+            return ($d && $d->format('Y-m-d') === $value) ? $value : null;
+        };
+
         if ($action === 'filter_generate' && !$hasUserInput) {
             // No filters set - use complete date range to show all data
             $startDate = $minDate;
@@ -77,8 +99,8 @@ class PosSalesReportController extends Controller
             $defaultEndDate = date('Y-m-d');
         } else {
             // User provided inputs or initial page load - use defaults
-            $startDate = $_GET['start_date'] ?? $minDate;
-            $endDate = $_GET['end_date'] ?? $yesterday;
+            $startDate = $validateDate($_GET['start_date'] ?? null) ?? $minDate;
+            $endDate   = $validateDate($_GET['end_date'] ?? null)   ?? $yesterday;
             $defaultStartDate = $minDate;
             $defaultEndDate = $yesterday;
         }
@@ -348,7 +370,12 @@ class PosSalesReportController extends Controller
                 // Query for preview (limited to 100 rows to prevent memory exhaustion)
                 $sql = $sqlBase . " LIMIT 100";
 
-                $reportRows = $this->query($sql, $params);
+                try {
+                    $reportRows = $this->query($sql, $params);
+                } catch (PDOException $e) {
+                    $reportRows = [];
+                    $queryError = 'Failed to load report: ' . $e->getMessage();
+                }
                 $previewRows = array_slice($reportRows, 0, 20);
                 $noData = empty($reportRows);
 
@@ -408,10 +435,21 @@ class PosSalesReportController extends Controller
                     }
                 }
 
-                $valueKey = isset($valueMap[$valueField]) ? $valueField : 'amount';
+                // Guard: aggregated mode requires at least one dimension field to produce a valid
+                // GROUP BY clause. Without any selection the generated SQL would be
+                //   SELECT SUM(amount) AS metric_value FROM ... ORDER BY
+                // which is a syntax error. Surface a clear validation message instead.
+                if (empty($selectedIndexFields) && empty($selectedColumnFields)) {
+                    $noData = true;
+                    $aggregatedValidationError = 'Please select at least one Index or Column field to generate an aggregated report.';
+                    require __DIR__ . "/../../public/views/pos/pos.php";
+                    return;
+                }
 
                 $selectParts = [];
                 $groupByParts = [];
+
+                $valueKey = isset($valueMap[$valueField]) ? $valueField : 'amount';
 
                 foreach ($selectedIndexFields as $field) {
                     $alias = 'index_' . $field;
@@ -544,7 +582,12 @@ class PosSalesReportController extends Controller
 
                 // For preview - limit to 100 rows to prevent memory issues
                 $sqlPreview = $sql . " LIMIT 100";
-                $reportRows = $this->query($sqlPreview, $params);
+                try {
+                    $reportRows = $this->query($sqlPreview, $params);
+                } catch (PDOException $e) {
+                    $reportRows = [];
+                    $queryError = 'Failed to load report: ' . $e->getMessage();
+                }
                 
                 $previewRows = array_slice($reportRows, 0, 20);
                 $noData = empty($reportRows);

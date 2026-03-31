@@ -9,6 +9,30 @@ $usePersistedFilters = isset($noData) && $noData;
 <div class="page-body">
   <!-- Container-fluid starts-->
   <div class="container-fluid">
+    <?php if (!empty($filterLoadError)): ?>
+      <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+        <strong>Database error:</strong> <?= htmlspecialchars($filterLoadError) ?> — filter options could not be loaded. Please try again or contact support.
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+    <?php endif; ?>
+    <?php if (!empty($queryError)): ?>
+      <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+        <strong>Report error:</strong> <?= htmlspecialchars($queryError) ?> — please adjust your filters and try again.
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+    <?php endif; ?>
+    <?php if (!empty($aggregatedValidationError)): ?>
+      <div class="alert alert-warning alert-dismissible fade show mt-3" role="alert">
+        <strong>Validation:</strong> <?= htmlspecialchars($aggregatedValidationError) ?>
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+    <?php endif; ?>
     <div class="row">
       <div class="col-12">
         <div class="card pos-container-css">
@@ -583,12 +607,22 @@ $usePersistedFilters = isset($noData) && $noData;
               </table>
             </div>
             <?php
-            $exportPaymentModes = isset($_GET['payment_mode']) ? (array)$_GET['payment_mode'] : [];
-            $exportStores = isset($_GET['store']) ? (array)$_GET['store'] : [];
-            $exportDiscounts = isset($_GET['discount']) ? (array)$_GET['discount'] : [];
-            $exportProducts = isset($_GET['product_name']) ? (array)$_GET['product_name'] : [];
-            $exportDepartments = isset($_GET['department_name']) ? (array)$_GET['department_name'] : [];
-            $exportTransactionTypes = isset($_GET['transaction_type']) ? (array)$_GET['transaction_type'] : [];
+            // Validate export filter values against known allowed options before
+            // echoing them into the hidden form, so tampered URLs cannot inject
+            // unexpected values into the export request.
+            $allowedPaymentModes   = array_column($paymentModes   ?? [], 'payment_name');
+            $allowedStores         = array_column($stores         ?? [], 'branch');
+            $allowedDiscounts      = array_column($discounts      ?? [], 'discount_name');
+            $allowedProducts       = array_column($productNames   ?? [], 'product_name');
+            $allowedDepartments    = array_column($departments    ?? [], 'department_name');
+            $allowedTransactions   = array_column($transactionTypes ?? [], 'transaction_type');
+
+            $exportPaymentModes      = array_values(array_intersect((array)($_GET['payment_mode']    ?? []), $allowedPaymentModes));
+            $exportStores            = array_values(array_intersect((array)($_GET['store']           ?? []), $allowedStores));
+            $exportDiscounts         = array_values(array_intersect((array)($_GET['discount']        ?? []), $allowedDiscounts));
+            $exportProducts          = array_values(array_intersect((array)($_GET['product_name']    ?? []), $allowedProducts));
+            $exportDepartments       = array_values(array_intersect((array)($_GET['department_name'] ?? []), $allowedDepartments));
+            $exportTransactionTypes  = array_values(array_intersect((array)($_GET['transaction_type']?? []), $allowedTransactions));
             
             // Use the same intelligently computed fields from the controller
             $finalIndexFields = isset($selectedIndexFields) ? $selectedIndexFields : [];
