@@ -41,7 +41,7 @@ $usePersistedFilters = isset($noData) && $noData;
               <h3 class="mb-0">Point-of-Sale (POS) Sales Reports</h3>
             </div>
             <form method="get">
-              <div class="mt-4 p-3 pos-container-css">
+              <div id="filter-ui-section" class="mt-4 p-3 pos-container-css">
                 <h5 class="mb-3"><image src="public/assets/images/filter_img.png" width="22" height="22"> Filter</h5>
                 <div class="row">
                   <div class="col-md-4 mb-3">
@@ -304,7 +304,7 @@ $usePersistedFilters = isset($noData) && $noData;
                     </div>
                   </div>
                 </div>
-                <div class="text-right mt-3">
+                <div class="d-flex justify-content-start align-items-center flex-wrap mt-3" style="gap: 8px;">
                   <button
                     type="submit"
                     name="action"
@@ -318,6 +318,12 @@ $usePersistedFilters = isset($noData) && $noData;
                       <span class="btn-loading-spinner"></span>
                       <span class="btn-loading-text">Generating...</span>
                     </span>
+                  </button>
+                  <button
+                    type="button"
+                    id="reset_filters_btn"
+                    class="btn btn-secondary btn-report-submit btn-report-reset">
+                    <image src="public/assets/images/reset_img.png" alt="RESET" width="16.3" height="16.3"> Reset
                   </button>
                 </div>
               </div>
@@ -459,6 +465,11 @@ $usePersistedFilters = isset($noData) && $noData;
             <?php if (!empty($previewRows)): ?>
               <p class="text-muted mb-2">
                 Showing a preview of the first 20 rows. Export to view the full report.
+              </p>
+            <?php endif; ?>
+            <?php if (!empty($_GET['store'])): ?>
+              <p class="text-muted mb-2">
+                The selected Store filters from the Filter section are applied to this report.
               </p>
             <?php endif; ?>
             <div class="table-responsive">
@@ -733,6 +744,17 @@ require __DIR__ . "/../template/footer.php";
     border-color: #0a58ca;
     transform: translateY(-1px);
     box-shadow: 0 0.35rem 0.5rem rgba(0, 0, 0, .2);
+  }
+
+  #reset_filters_btn,
+  #reset_filters_btn:hover,
+  #reset_filters_btn:focus,
+  #reset_filters_btn:active {
+    background-color: #b1b1b1 !important;
+    border-color: #b1b1b1 !important;
+    color: #242424 !important;
+    font-family: inherit;
+    font-size: 12px;
   }
 
   .btn-report-export {
@@ -1417,6 +1439,22 @@ require __DIR__ . "/../template/footer.php";
         }
       }
 
+      wrapper.addEventListener("multi-select-reset", function() {
+        select.querySelectorAll("option").forEach(function(opt) {
+          opt.selected = false;
+        });
+
+        dropdown.querySelectorAll(".multi-select-option").forEach(function(opt) {
+          opt.classList.remove("selected");
+          opt.style.display = "";
+        });
+
+        dropdown.classList.remove("open");
+        input.value = "";
+        updateBadge();
+        filter();
+      });
+
       // Initialize with existing selections
       select.querySelectorAll("option").forEach(function(opt) {
         if (opt.selected) {
@@ -1675,6 +1713,46 @@ require __DIR__ . "/../template/footer.php";
         applyPreset(preset);
       });
     });
+
+    var resetFiltersBtn = document.getElementById("reset_filters_btn");
+    var filterUiSection = document.getElementById("filter-ui-section");
+
+    function resetFilterUiFields() {
+      if (startPicker) {
+        startPicker.clear();
+      }
+      if (endPicker) {
+        endPicker.clear();
+      }
+
+      if (startDateInput) {
+        startDateInput.value = "";
+      }
+      if (endDateInput) {
+        endDateInput.value = "";
+      }
+
+      datePresetButtons.forEach(function(btn) {
+        btn.classList.remove("active");
+      });
+
+      clearDateValidation();
+
+      if (!filterUiSection) {
+        return;
+      }
+
+      filterUiSection.querySelectorAll(".multi-select-wrapper").forEach(function(wrapper) {
+        wrapper.dispatchEvent(new Event("multi-select-reset"));
+      });
+    }
+
+    if (resetFiltersBtn) {
+      resetFiltersBtn.addEventListener("click", function(event) {
+        event.preventDefault();
+        resetFilterUiFields();
+      });
+    }
 
     if (startDateInput) {
       startDateInput.addEventListener("change", validateDateRangeInputs);
