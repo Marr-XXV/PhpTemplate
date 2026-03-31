@@ -96,6 +96,9 @@ $usePersistedFilters = isset($noData) && $noData;
                       <button type="button" class="btn btn-outline-primary btn-sm date-preset" data-preset="last-quarter" title="Set to last quarter">Last Quarter</button>
                     </div>
                   </div>
+                  <div class="col-12 mb-2">
+                    <div id="date_validation_feedback" class="alert alert-warning py-2 px-3 mb-0" role="alert" style="display:none;"></div>
+                  </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Payment Mode</label>
                     <div class="multi-select-wrapper" data-field-type="payment_mode">
@@ -1514,6 +1517,90 @@ require __DIR__ . "/../template/footer.php";
     var datePresetButtons = document.querySelectorAll(".date-preset");
     var startDateInput = document.getElementById("start_date");
     var endDateInput = document.getElementById("end_date");
+    var dateValidationFeedback = document.getElementById("date_validation_feedback");
+
+    function parseStrictIsoDate(value) {
+      if (!value) {
+        return null;
+      }
+
+      var trimmed = value.trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        return false;
+      }
+
+      var parts = trimmed.split("-");
+      var year = Number(parts[0]);
+      var month = Number(parts[1]);
+      var day = Number(parts[2]);
+      var parsed = new Date(Date.UTC(year, month - 1, day));
+
+      if (
+        parsed.getUTCFullYear() !== year ||
+        parsed.getUTCMonth() !== month - 1 ||
+        parsed.getUTCDate() !== day
+      ) {
+        return false;
+      }
+
+      return parsed;
+    }
+
+    function showDateValidation(message) {
+      if (dateValidationFeedback) {
+        dateValidationFeedback.textContent = message;
+        dateValidationFeedback.style.display = "block";
+      }
+      if (startDateInput) {
+        startDateInput.classList.add("is-invalid");
+      }
+      if (endDateInput) {
+        endDateInput.classList.add("is-invalid");
+      }
+    }
+
+    function clearDateValidation() {
+      if (dateValidationFeedback) {
+        dateValidationFeedback.textContent = "";
+        dateValidationFeedback.style.display = "none";
+      }
+      if (startDateInput) {
+        startDateInput.classList.remove("is-invalid");
+      }
+      if (endDateInput) {
+        endDateInput.classList.remove("is-invalid");
+      }
+    }
+
+    function validateDateRangeInputs() {
+      if (!startDateInput || !endDateInput) {
+        return true;
+      }
+
+      var startRaw = startDateInput.value.trim();
+      var endRaw = endDateInput.value.trim();
+
+      if (!startRaw || !endRaw) {
+        clearDateValidation();
+        return true;
+      }
+
+      var startParsed = parseStrictIsoDate(startRaw);
+      var endParsed = parseStrictIsoDate(endRaw);
+
+      if (startParsed === false || endParsed === false) {
+        showDateValidation("Invalid date format. Please use YYYY-MM-DD.");
+        return false;
+      }
+
+      if (startParsed.getTime() > endParsed.getTime()) {
+        showDateValidation("Invalid date range: Start Date cannot be later than End Date.");
+        return false;
+      }
+
+      clearDateValidation();
+      return true;
+    }
 
     function formatDate(date) {
       var year = date.getFullYear();
@@ -1578,6 +1665,7 @@ require __DIR__ . "/../template/footer.php";
         btn.classList.remove("active");
       });
       document.querySelector('[data-preset="' + preset + '"]').classList.add("active");
+      validateDateRangeInputs();
     }
 
     datePresetButtons.forEach(function(button) {
@@ -1587,5 +1675,28 @@ require __DIR__ . "/../template/footer.php";
         applyPreset(preset);
       });
     });
+
+    if (startDateInput) {
+      startDateInput.addEventListener("change", validateDateRangeInputs);
+      startDateInput.addEventListener("blur", validateDateRangeInputs);
+    }
+    if (endDateInput) {
+      endDateInput.addEventListener("change", validateDateRangeInputs);
+      endDateInput.addEventListener("blur", validateDateRangeInputs);
+    }
+
+    var posForm = document.querySelector(".pos-container-css form");
+    if (posForm) {
+      posForm.addEventListener("submit", function(event) {
+        if (!validateDateRangeInputs()) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (typeof event.stopImmediatePropagation === "function") {
+            event.stopImmediatePropagation();
+          }
+          resetAllReportActionButtons();
+        }
+      }, true);
+    }
   });
 </script>
