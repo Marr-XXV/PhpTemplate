@@ -68,6 +68,45 @@ class PosSalesReportController extends Controller
 
         $minDate = isset($dateRangeRow[0]['min_date']) ? $dateRangeRow[0]['min_date'] : null;
 
+        $queryError = null;
+        $aggregatedValidationError = null;
+        $filterInputWarning = null;
+        $reportEmptyStateMessage = null;
+
+        $allowedPaymentModes = array_column($paymentModes, 'payment_name');
+        $allowedStores = array_column($stores, 'branch');
+        $allowedDiscounts = array_column($discounts, 'discount_name');
+        $allowedProductNames = array_column($productNames, 'product_name');
+        $allowedDepartments = array_column($departments, 'department_name');
+        $allowedTransactionTypes = array_column($transactionTypes, 'transaction_type');
+
+        $invalidFilterLabels = [];
+        $normalizeSelections = function (array $selectedValues, array $allowedValues, string $label) use (&$invalidFilterLabels) {
+            $allowedLookup = array_fill_keys(array_map('strval', $allowedValues), true);
+            $validValues = [];
+            $foundInvalidValue = false;
+
+            foreach ($selectedValues as $value) {
+                $normalized = is_string($value) ? trim($value) : (string)$value;
+
+                if ($normalized === '') {
+                    continue;
+                }
+
+                if (isset($allowedLookup[$normalized])) {
+                    $validValues[] = $normalized;
+                } else {
+                    $foundInvalidValue = true;
+                }
+            }
+
+            if ($foundInvalidValue) {
+                $invalidFilterLabels[] = $label;
+            }
+
+            return $validValues;
+        };
+
         $currentDateTime = $this->getDate();
         if ($currentDateTime && $currentDateTime !== "Failed to retrieve datetime.") {
             $currentDate = substr($currentDateTime, 0, 10);
@@ -115,6 +154,7 @@ class PosSalesReportController extends Controller
                 }
             }
         }
+        $paymentModesFilter = $normalizeSelections($paymentModesFilter, $allowedPaymentModes, 'Payment Mode');
 
         $storesFilter = [];
         if (isset($_GET['store'])) {
@@ -126,6 +166,7 @@ class PosSalesReportController extends Controller
                 }
             }
         }
+        $storesFilter = $normalizeSelections($storesFilter, $allowedStores, 'Store');
 
         $discountsFilter = [];
         if (isset($_GET['discount'])) {
@@ -137,6 +178,7 @@ class PosSalesReportController extends Controller
                 }
             }
         }
+        $discountsFilter = $normalizeSelections($discountsFilter, $allowedDiscounts, 'Discount');
 
         $officialReceipt = $_GET['official_receipt'] ?? null;
         $phoneNumber = $_GET['phone_number'] ?? null;
@@ -150,6 +192,7 @@ class PosSalesReportController extends Controller
                 }
             }
         }
+        $productNamesFilter = $normalizeSelections($productNamesFilter, $allowedProductNames, 'Product Name');
 
         $departmentsFilter = [];
         if (isset($_GET['department_name'])) {
@@ -161,6 +204,7 @@ class PosSalesReportController extends Controller
                 }
             }
         }
+        $departmentsFilter = $normalizeSelections($departmentsFilter, $allowedDepartments, 'Department Name');
 
         $transactionTypesFilter = [];
         if (isset($_GET['transaction_type'])) {
@@ -171,6 +215,11 @@ class PosSalesReportController extends Controller
                     $transactionTypesFilter[] = $value;
                 }
             }
+        }
+        $transactionTypesFilter = $normalizeSelections($transactionTypesFilter, $allowedTransactionTypes, 'Transaction Type');
+
+        if (!empty($invalidFilterLabels)) {
+            $filterInputWarning = 'Some selected values were not found in the dataset and were ignored: ' . implode(', ', array_unique($invalidFilterLabels)) . '.';
         }
 
         // Determine report mode based on user input
@@ -378,6 +427,10 @@ class PosSalesReportController extends Controller
                 }
                 $previewRows = array_slice($reportRows, 0, 20);
                 $noData = empty($reportRows);
+
+                if ($noData && empty($queryError) && empty($aggregatedValidationError)) {
+                    $reportEmptyStateMessage = 'No matching records were found for the selected filters. Try widening the date range, removing one filter, or checking the values you entered.';
+                }
 
                 if ($action === 'export') {
                     header('Content-Type: text/csv');
@@ -591,6 +644,10 @@ class PosSalesReportController extends Controller
                 
                 $previewRows = array_slice($reportRows, 0, 20);
                 $noData = empty($reportRows);
+
+                if ($noData && empty($queryError) && empty($aggregatedValidationError)) {
+                    $reportEmptyStateMessage = 'No matching records were found for the selected filters. Try widening the date range, removing one filter, or checking the values you entered.';
+                }
 
                 if ($action === 'export') {
                     header('Content-Type: text/csv');

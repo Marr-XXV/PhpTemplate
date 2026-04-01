@@ -33,6 +33,14 @@ $usePersistedFilters = isset($noData) && $noData;
         </button>
       </div>
     <?php endif; ?>
+    <?php if (!empty($filterInputWarning)): ?>
+      <div class="alert alert-warning alert-dismissible fade show mt-3" role="alert">
+        <strong>Invalid filter value:</strong> <?= htmlspecialchars($filterInputWarning) ?>
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+    <?php endif; ?>
     <div class="row">
       <div class="col-12">
         <div class="card pos-container-css">
@@ -443,10 +451,14 @@ $usePersistedFilters = isset($noData) && $noData;
         <div id="report-generated-section" class="card rg-container-css">
           <div class="card-header d-flex justify-content-between align-items-center">
             <h3 class="mb-0">Report Generated</h3>
+            <?php
+            $canExport = !empty($reportRows) && empty($queryError) && empty($aggregatedValidationError);
+            ?>
             <button
               type="submit"
               form="pos-export-form"
-              class="btn btn-success btn-sm btn-report-export js-report-action-btn"
+              class="btn btn-success btn-sm btn-report-export js-report-action-btn<?= $canExport ? '' : ' disabled' ?>"
+              <?= $canExport ? '' : 'disabled aria-disabled="true" title="Generate a report with results before exporting."' ?>
               data-loading-text="Exporting...">
               <span class="btn-default-content">
                 <img src="public/assets/images/export_img1.png" alt="icon" width="20" height="20"> Export
@@ -605,15 +617,27 @@ $usePersistedFilters = isset($noData) && $noData;
                   <?php else: ?>
                     <?php
                     $isAllColumnsMode = isset($showAllColumnsMode) && $showAllColumnsMode;
+                    $reportRequested = isset($action) && in_array($action, ['filter_generate', 'filter', 'export'], true);
+
                     if ($isAllColumnsMode && isset($allColumns)):
                       $totalColumns = count($allColumns);
                     else:
                       $totalColumns = count($validIndexFields ?? []) + count($validColumnFields ?? []) + 1;
                     endif;
+
+                    if (!empty($queryError) || !empty($filterLoadError)) {
+                      $rowEmptyMessage = 'Report unavailable. Please try again.';
+                    } elseif (!empty($aggregatedValidationError) || !empty($filterInputWarning)) {
+                      $rowEmptyMessage = 'Check your selected values and submit again.';
+                    } elseif (!empty($reportEmptyStateMessage) || $reportRequested) {
+                      $rowEmptyMessage = 'No matching data found.';
+                    } else {
+                      $rowEmptyMessage = 'Generate a report to view results.';
+                    }
                     ?>
                     <tr>
                       <td colspan="<?= (int)$totalColumns ?>" class="text-center">
-                        No records found. Please adjust your filters.
+                        <?= htmlspecialchars($rowEmptyMessage) ?>
                       </td>
                     </tr>
                   <?php endif; ?>
@@ -685,6 +709,49 @@ $usePersistedFilters = isset($noData) && $noData;
   </div>
   <!-- Container-fluid Ends-->
 </div>
+
+<?php
+$reportNoticeTitle = 'Report Notice';
+$reportNoticeMessage = '';
+$reportNoticeAutoOpen = false;
+
+if (!empty($filterLoadError)) {
+  $reportNoticeTitle = 'Database error';
+  $reportNoticeMessage = $filterLoadError . ' Filter options could not be loaded.';
+} elseif (!empty($queryError)) {
+  $reportNoticeTitle = 'Report error';
+  $reportNoticeMessage = $queryError . ' Please adjust your filters and try again.';
+} elseif (!empty($aggregatedValidationError)) {
+  $reportNoticeTitle = 'Validation warning';
+  $reportNoticeMessage = $aggregatedValidationError;
+} elseif (!empty($filterInputWarning)) {
+  $reportNoticeTitle = 'Invalid filter value';
+  $reportNoticeMessage = $filterInputWarning;
+} elseif (!empty($reportEmptyStateMessage)) {
+  $reportNoticeTitle = 'No matching data';
+  $reportNoticeMessage = $reportEmptyStateMessage;
+}
+$reportNoticeAutoOpen = $reportNoticeMessage !== '';
+?>
+
+  <div id="report-notice-modal" class="report-notice-modal" role="dialog" aria-modal="true" aria-labelledby="report-notice-title" aria-hidden="true" data-auto-open="<?= $reportNoticeAutoOpen ? 'true' : 'false' ?>">
+    <div class="report-notice-modal__backdrop" data-report-notice-close></div>
+    <div class="report-notice-modal__panel" role="document">
+      <div class="report-notice-modal__header">
+        <h4 id="report-notice-title" class="mb-0 d-flex align-items-center" style="gap: 10px;">
+          <img src="public/assets/images/Warning_Icon.png" alt="Warning" width="24" height="24">
+          <span id="report-notice-title-text"><?= htmlspecialchars($reportNoticeTitle) ?></span>
+        </h4>
+        <button type="button" class="report-notice-modal__close" data-report-notice-close aria-label="Close">&times;</button>
+      </div>
+      <div class="report-notice-modal__body">
+        <p id="report-notice-message-text" class="mb-0"><?= htmlspecialchars($reportNoticeMessage) ?></p>
+      </div>
+      <div class="report-notice-modal__footer">
+        <button type="button" class="btn btn-primary" data-report-notice-close>OK</button>
+      </div>
+    </div>
+  </div>
 <?php
 require __DIR__ . "/../template/footer.php";
 ?>
@@ -773,6 +840,75 @@ require __DIR__ . "/../template/footer.php";
     border-color: #157347;
     transform: translateY(-1px);
     box-shadow: 0 0.35rem 0.5rem rgba(0, 0, 0, .2);
+  }
+
+  .report-notice-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .report-notice-modal.is-open {
+    display: flex;
+  }
+
+  .report-notice-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  .report-notice-modal__panel {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 520px);
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+    overflow: hidden;
+  }
+
+  .report-notice-modal__header,
+  .report-notice-modal__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 20px;
+  }
+
+  .report-notice-modal__header {
+    border-bottom: 1px solid #e9ecef;
+  }
+
+  .report-notice-modal__body {
+    padding: 20px;
+    color: #495057;
+    line-height: 1.6;
+  }
+
+  .report-notice-modal__footer {
+    border-top: 1px solid #e9ecef;
+    justify-content: flex-end;
+  }
+
+  .report-notice-modal__close {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    font-size: 28px;
+    line-height: 1;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .report-notice-modal__close:hover {
+    color: #212529;
   }
 
   .pos-container-css {
@@ -1125,6 +1261,109 @@ require __DIR__ . "/../template/footer.php";
     var exportResetTimeoutId = null;
     var reportGeneratedSection = document.getElementById("report-generated-section");
     var reportGeneratedBody = document.querySelector(".report-generated-body");
+    var reportNoticeModal = document.getElementById("report-notice-modal");
+    var reportNoticeModalTitle = document.getElementById("report-notice-title-text");
+    var reportNoticeModalMessage = document.getElementById("report-notice-message-text");
+    var reportNoticeShouldAutoOpen = reportNoticeModal && reportNoticeModal.getAttribute("data-auto-open") === "true";
+    var multiSelectFieldLabels = {
+      payment_mode: "Payment Mode",
+      store: "Store",
+      discount: "Discount",
+      product_name: "Product Name",
+      department_name: "Department Name",
+      transaction_type: "Transaction Type",
+      index: "Index",
+      column: "Column"
+    };
+
+    function openReportNoticeModal() {
+      if (!reportNoticeModal) {
+        return;
+      }
+
+      reportNoticeModal.classList.add("is-open");
+      reportNoticeModal.setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeReportNoticeModal() {
+      if (!reportNoticeModal) {
+        return;
+      }
+
+      reportNoticeModal.classList.remove("is-open");
+      reportNoticeModal.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+    }
+
+    function showReportNotice(title, message) {
+      if (reportNoticeModalTitle) {
+        reportNoticeModalTitle.textContent = title;
+      }
+
+      if (reportNoticeModalMessage) {
+        reportNoticeModalMessage.textContent = message;
+      }
+
+      openReportNoticeModal();
+    }
+
+    function getSelectedLabelList(labels) {
+      if (labels.length === 0) {
+        return "";
+      }
+
+      if (labels.length === 1) {
+        return labels[0];
+      }
+
+      if (labels.length === 2) {
+        return labels[0] + " and " + labels[1];
+      }
+
+      return labels.slice(0, -1).join(", ") + ", and " + labels[labels.length - 1];
+    }
+
+    function validateTypedMultiSelectInputs() {
+      var invalidFields = [];
+
+      document.querySelectorAll(".multi-select-wrapper").forEach(function(wrapper) {
+        var input = wrapper.querySelector(".multi-select-input-text");
+        var select = wrapper.querySelector("select.multi-select-hidden");
+
+        if (!input || !select) {
+          return;
+        }
+
+        if (input.value.trim() === "") {
+          return;
+        }
+
+        var fieldType = wrapper.getAttribute("data-field-type");
+        invalidFields.push({
+          fieldLabel: multiSelectFieldLabels[fieldType] || "one of the filters",
+          typedValue: input.value.trim()
+        });
+      });
+
+      return invalidFields;
+    }
+
+    if (reportNoticeModal) {
+      reportNoticeModal.querySelectorAll("[data-report-notice-close]").forEach(function(trigger) {
+        trigger.addEventListener("click", closeReportNoticeModal);
+      });
+
+      document.addEventListener("keydown", function(event) {
+        if (event.key === "Escape") {
+          closeReportNoticeModal();
+        }
+      });
+
+      if (reportNoticeShouldAutoOpen) {
+        window.setTimeout(openReportNoticeModal, 50);
+      }
+    }
 
     function shouldAutoScrollToReport() {
       var urlParams = new URLSearchParams(window.location.search);
@@ -1188,6 +1427,27 @@ require __DIR__ . "/../template/footer.php";
         var isExportAction = submitter && submitter.classList.contains("btn-report-export");
         var submitActionValue = submitter && submitter.name === "action" ? submitter.value : "";
         var isPreviewGenerationAction = submitActionValue === "filter_generate" || submitActionValue === "filter";
+        var invalidTypedFields = validateTypedMultiSelectInputs();
+
+        if (invalidTypedFields.length > 0) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (typeof event.stopImmediatePropagation === "function") {
+            event.stopImmediatePropagation();
+          }
+
+          var invalidDescriptions = invalidTypedFields.map(function(item) {
+            return '"' + item.typedValue + '" in ' + item.fieldLabel;
+          });
+
+          showReportNotice(
+            "Invalid input",
+            "The value " + getSelectedLabelList(invalidDescriptions) + " was not recognized. Please select a valid option from the dropdown before submitting the report."
+          );
+
+          resetAllReportActionButtons();
+          return;
+        }
 
         reportActionButtons.forEach(function(button) {
           button.disabled = true;
