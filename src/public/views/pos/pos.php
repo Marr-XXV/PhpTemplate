@@ -376,6 +376,7 @@ $usePersistedFilters = isset($noData) && $noData;
                         <?php endforeach; ?>
                       </select>
                     </div>
+                    <div class="invalid-feedback" id="report_index_feedback" style="display:none;font-size:12px;color:#dc3545;margin-top:4px;">Index is required</div>
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Column</label>
@@ -402,6 +403,7 @@ $usePersistedFilters = isset($noData) && $noData;
                         <?php endforeach; ?>
                       </select>
                     </div>
+                    <div class="invalid-feedback" id="report_column_feedback" style="display:none;font-size:12px;color:#dc3545;margin-top:4px;">Column is required</div>
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Value</label>
@@ -422,6 +424,7 @@ $usePersistedFilters = isset($noData) && $noData;
                         </option>
                       <?php endforeach; ?>
                     </select>
+                    <div class="invalid-feedback" id="report_value_feedback" style="display:none;font-size:12px;color:#dc3545;margin-top:4px;">Value is required</div>
                   </div>
                 </div>
                 <div class="text-right mt-3">
@@ -954,6 +957,16 @@ require __DIR__ . "/../template/footer.php";
     position: relative;
   }
 
+  .multi-select-wrapper.is-invalid .multi-select-control {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.15);
+  }
+
+  .form-control.is-invalid {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.15);
+  }
+
   .multi-select-control {
     display: flex;
     align-items: center;
@@ -1349,6 +1362,122 @@ require __DIR__ . "/../template/footer.php";
       return invalidFields;
     }
 
+    function validateReportSubmitConfiguration(form) {
+      if (!form) {
+        return {
+          isValid: true,
+          missingFields: [],
+          hasIndex: true,
+          hasColumn: true,
+          hasValue: true
+        };
+      }
+
+      var indexSelect = form.querySelector('select[name="index_field[]"]');
+      var columnSelect = form.querySelector('select[name="column_field[]"]');
+      var valueSelect = form.querySelector('select[name="value_field"]');
+      var missingFields = [];
+
+      var hasIndex = indexSelect && indexSelect.querySelectorAll("option:checked").length > 0;
+      var hasColumn = columnSelect && columnSelect.querySelectorAll("option:checked").length > 0;
+      var hasValue = valueSelect && valueSelect.value && valueSelect.value.trim() !== "";
+
+      if (!hasIndex) {
+        missingFields.push("Index");
+      }
+
+      if (!hasColumn) {
+        missingFields.push("Column");
+      }
+
+      if (!hasValue) {
+        missingFields.push("Value");
+      }
+
+      return {
+        isValid: missingFields.length === 0,
+        missingFields: missingFields,
+        hasIndex: hasIndex,
+        hasColumn: hasColumn,
+        hasValue: hasValue
+      };
+    }
+
+    function clearReportSubmitConfigurationState(form) {
+      if (!form) {
+        return;
+      }
+
+      var indexWrapper = form.querySelector('.multi-select-wrapper[data-field-type="index"]');
+      var columnWrapper = form.querySelector('.multi-select-wrapper[data-field-type="column"]');
+      var valueSelect = form.querySelector('select[name="value_field"]');
+      var indexFeedback = document.getElementById("report_index_feedback");
+      var columnFeedback = document.getElementById("report_column_feedback");
+      var valueFeedback = document.getElementById("report_value_feedback");
+
+      if (indexWrapper) {
+        indexWrapper.classList.remove("is-invalid");
+      }
+
+      if (columnWrapper) {
+        columnWrapper.classList.remove("is-invalid");
+      }
+
+      if (valueSelect) {
+        valueSelect.classList.remove("is-invalid");
+      }
+
+      if (indexFeedback) {
+        indexFeedback.style.display = "none";
+      }
+
+      if (columnFeedback) {
+        columnFeedback.style.display = "none";
+      }
+
+      if (valueFeedback) {
+        valueFeedback.style.display = "none";
+      }
+    }
+
+    function showReportSubmitConfigurationState(form, validationResult) {
+      if (!form || !validationResult || validationResult.isValid) {
+        clearReportSubmitConfigurationState(form);
+        return;
+      }
+
+      var indexWrapper = form.querySelector('.multi-select-wrapper[data-field-type="index"]');
+      var columnWrapper = form.querySelector('.multi-select-wrapper[data-field-type="column"]');
+      var valueSelect = form.querySelector('select[name="value_field"]');
+      var indexFeedback = document.getElementById("report_index_feedback");
+      var columnFeedback = document.getElementById("report_column_feedback");
+      var valueFeedback = document.getElementById("report_value_feedback");
+
+      if (indexWrapper) {
+        indexWrapper.classList.toggle("is-invalid", !validationResult.hasIndex);
+      }
+
+      if (columnWrapper) {
+        columnWrapper.classList.toggle("is-invalid", !validationResult.hasColumn);
+      }
+
+      if (valueSelect) {
+        valueSelect.classList.toggle("is-invalid", !validationResult.hasValue);
+      }
+
+      if (indexFeedback) {
+        indexFeedback.style.display = !validationResult.hasIndex ? "block" : "none";
+      }
+
+      if (columnFeedback) {
+        columnFeedback.style.display = !validationResult.hasColumn ? "block" : "none";
+      }
+
+      if (valueFeedback) {
+        valueFeedback.style.display = !validationResult.hasValue ? "block" : "none";
+      }
+    }
+
     if (reportNoticeModal) {
       reportNoticeModal.querySelectorAll("[data-report-notice-close]").forEach(function(trigger) {
         trigger.addEventListener("click", closeReportNoticeModal);
@@ -1428,6 +1557,24 @@ require __DIR__ . "/../template/footer.php";
         var submitActionValue = submitter && submitter.name === "action" ? submitter.value : "";
         var isPreviewGenerationAction = submitActionValue === "filter_generate" || submitActionValue === "filter";
         var invalidTypedFields = validateTypedMultiSelectInputs();
+        clearReportSubmitConfigurationState(form);
+
+        if (submitActionValue === "filter") {
+          var reportConfigValidation = validateReportSubmitConfiguration(form);
+
+          if (!reportConfigValidation.isValid) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (typeof event.stopImmediatePropagation === "function") {
+              event.stopImmediatePropagation();
+            }
+
+            showReportSubmitConfigurationState(form, reportConfigValidation);
+
+            resetAllReportActionButtons();
+            return;
+          }
+        }
 
         if (invalidTypedFields.length > 0) {
           event.preventDefault();
@@ -1750,6 +1897,7 @@ require __DIR__ . "/../template/footer.php";
         input.value = "";
         updateBadge();
         filter();
+        select.dispatchEvent(new Event("change", { bubbles: true }));
       }
 
       function filter() {
@@ -2025,6 +2173,28 @@ require __DIR__ . "/../template/footer.php";
 
     var posForm = document.querySelector(".pos-container-css form");
     if (posForm) {
+      var reportIndexSelect = posForm.querySelector('select[name="index_field[]"]');
+      var reportColumnSelect = posForm.querySelector('select[name="column_field[]"]');
+      var reportValueSelect = posForm.querySelector('select[name="value_field"]');
+
+      if (reportIndexSelect) {
+        reportIndexSelect.addEventListener("change", function() {
+          clearReportSubmitConfigurationState(posForm);
+        });
+      }
+
+      if (reportColumnSelect) {
+        reportColumnSelect.addEventListener("change", function() {
+          clearReportSubmitConfigurationState(posForm);
+        });
+      }
+
+      if (reportValueSelect) {
+        reportValueSelect.addEventListener("change", function() {
+          clearReportSubmitConfigurationState(posForm);
+        });
+      }
+
       posForm.addEventListener("submit", function(event) {
         if (!validateDateRangeInputs()) {
           event.preventDefault();
