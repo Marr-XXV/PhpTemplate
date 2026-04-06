@@ -488,13 +488,10 @@ class PosSalesReportController extends Controller
                     }
                 }
 
-                // Guard: aggregated mode requires at least one dimension field to produce a valid
-                // GROUP BY clause. Without any selection the generated SQL would be
-                //   SELECT SUM(amount) AS metric_value FROM ... ORDER BY
-                // which is a syntax error. Surface a clear validation message instead.
-                if (empty($selectedIndexFields) && empty($selectedColumnFields)) {
+                // Guard: aggregated mode requires at least one Index field.
+                if (empty($selectedIndexFields)) {
                     $noData = true;
-                    $aggregatedValidationError = 'Please select at least one Index or Column field to generate an aggregated report.';
+                    $aggregatedValidationError = 'Please select at least one Index field to generate an aggregated report.';
                     require __DIR__ . "/../../public/views/pos/pos.php";
                     return;
                 }

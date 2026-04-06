@@ -1386,16 +1386,8 @@ require __DIR__ . "/../template/footer.php";
         missingFields.push("Index");
       }
 
-      if (!hasColumn) {
-        missingFields.push("Column");
-      }
-
-      if (!hasValue) {
-        missingFields.push("Value");
-      }
-
       return {
-        isValid: missingFields.length === 0,
+        isValid: hasIndex,
         missingFields: missingFields,
         hasIndex: hasIndex,
         hasColumn: hasColumn,
@@ -1458,11 +1450,11 @@ require __DIR__ . "/../template/footer.php";
       }
 
       if (columnWrapper) {
-        columnWrapper.classList.toggle("is-invalid", !validationResult.hasColumn);
+        columnWrapper.classList.remove("is-invalid");
       }
 
       if (valueSelect) {
-        valueSelect.classList.toggle("is-invalid", !validationResult.hasValue);
+        valueSelect.classList.remove("is-invalid");
       }
 
       if (indexFeedback) {
@@ -1470,11 +1462,11 @@ require __DIR__ . "/../template/footer.php";
       }
 
       if (columnFeedback) {
-        columnFeedback.style.display = !validationResult.hasColumn ? "block" : "none";
+        columnFeedback.style.display = "none";
       }
 
       if (valueFeedback) {
-        valueFeedback.style.display = !validationResult.hasValue ? "block" : "none";
+        valueFeedback.style.display = "none";
       }
     }
 
