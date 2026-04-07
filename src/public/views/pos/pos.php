@@ -54,7 +54,7 @@ $usePersistedFilters = isset($noData) && $noData;
                 <div class="row">
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Start Date</label>
-                    <div class="input-group">
+                    <div class="input-group date-input-group">
                       <input
                         type="text"
                         id="start_date"
@@ -66,6 +66,15 @@ $usePersistedFilters = isset($noData) && $noData;
                                   ? htmlspecialchars($_GET['start_date'])
                                   : (isset($defaultStartDate) ? htmlspecialchars($defaultStartDate) : '')
                                 ?>">
+                      <button
+                        type="button"
+                        class="date-error-trigger"
+                        id="start_date_error_trigger"
+                        aria-label="Show Start Date validation message"
+                        aria-describedby="start_date_error_tooltip"
+                        aria-expanded="false"
+                        hidden>!</button>
+                      <div class="date-error-tooltip" id="start_date_error_tooltip" role="tooltip" aria-hidden="true"></div>
                       <div class="input-group-append">
                         <span class="input-group-text" id="start_date_icon">
                           <image src="public/assets/images/calendar.png" width="24" height="24">
@@ -75,7 +84,7 @@ $usePersistedFilters = isset($noData) && $noData;
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">End Date</label>
-                    <div class="input-group">
+                    <div class="input-group date-input-group">
                       <input
                         type="text"
                         id="end_date"
@@ -87,6 +96,15 @@ $usePersistedFilters = isset($noData) && $noData;
                                   ? htmlspecialchars($_GET['end_date'])
                                   : (isset($defaultEndDate) ? htmlspecialchars($defaultEndDate) : '')
                                 ?>">
+                      <button
+                        type="button"
+                        class="date-error-trigger"
+                        id="end_date_error_trigger"
+                        aria-label="Show End Date validation message"
+                        aria-describedby="end_date_error_tooltip"
+                        aria-expanded="false"
+                        hidden>!</button>
+                      <div class="date-error-tooltip" id="end_date_error_tooltip" role="tooltip" aria-hidden="true"></div>
                       <div class="input-group-append">
                         <span class="input-group-text" id="end_date_icon">
                           <image src="public/assets/images/calendar.png" width="24" height="24">
@@ -103,9 +121,6 @@ $usePersistedFilters = isset($noData) && $noData;
                       <button type="button" class="btn btn-outline-primary btn-sm date-preset" data-preset="last-month" title="Set to last month">Last Month</button>
                       <button type="button" class="btn btn-outline-primary btn-sm date-preset" data-preset="last-quarter" title="Set to last quarter">Last Quarter</button>
                     </div>
-                  </div>
-                  <div class="col-12 mb-2">
-                    <div id="date_validation_feedback" class="alert alert-warning py-2 px-3 mb-0" role="alert" style="display:none;"></div>
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Payment Mode</label>
@@ -965,6 +980,84 @@ require __DIR__ . "/../template/footer.php";
   .form-control.is-invalid {
     border-color: #dc3545;
     box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.15);
+  }
+
+  .date-input-group {
+    position: relative;
+  }
+
+  .date-input-group .form-control.is-invalid {
+    background-image: none;
+    padding-right: 0.75rem;
+  }
+
+  .date-error-trigger {
+    appearance: none;
+    -webkit-appearance: none;
+    position: absolute;
+    top: 50%;
+    right: 52px;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    min-height: 18px;
+    border: 1px solid #dc3545;
+    border-radius: 9999px !important;
+    background: #fff3cd;
+    color: #8a4200;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    text-align: center;
+    vertical-align: middle;
+    cursor: pointer;
+    overflow: hidden;
+    z-index: 4;
+  }
+
+  .date-error-trigger.is-visible {
+    display: inline-flex;
+  }
+
+  .date-error-trigger:focus {
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.2);
+  }
+
+  .date-error-tooltip {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 52px;
+    max-width: 280px;
+    background: #1f2937;
+    color: #ffffff;
+    font-size: 12px;
+    line-height: 1.35;
+    padding: 8px 10px;
+    border-radius: 6px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    display: none;
+    z-index: 1000;
+  }
+
+  .date-error-tooltip::before {
+    content: "";
+    position: absolute;
+    top: -5px;
+    right: 10px;
+    width: 10px;
+    height: 10px;
+    background: #1f2937;
+    transform: rotate(45deg);
+  }
+
+  .date-error-tooltip.is-visible {
+    display: block;
   }
 
   .multi-select-control {
@@ -1955,7 +2048,130 @@ require __DIR__ . "/../template/footer.php";
     var datePresetButtons = document.querySelectorAll(".date-preset");
     var startDateInput = document.getElementById("start_date");
     var endDateInput = document.getElementById("end_date");
-    var dateValidationFeedback = document.getElementById("date_validation_feedback");
+    var startDateErrorTrigger = document.getElementById("start_date_error_trigger");
+    var endDateErrorTrigger = document.getElementById("end_date_error_trigger");
+    var startDateErrorTooltip = document.getElementById("start_date_error_tooltip");
+    var endDateErrorTooltip = document.getElementById("end_date_error_tooltip");
+
+    function showDateTooltip(trigger, tooltip) {
+      if (!trigger || !tooltip || !trigger.classList.contains("is-visible")) {
+        return;
+      }
+
+      tooltip.classList.add("is-visible");
+      tooltip.setAttribute("aria-hidden", "false");
+      trigger.setAttribute("aria-expanded", "true");
+    }
+
+    function hideDateTooltip(trigger, tooltip) {
+      if (!trigger || !tooltip) {
+        return;
+      }
+
+      tooltip.classList.remove("is-visible");
+      tooltip.setAttribute("aria-hidden", "true");
+      trigger.setAttribute("aria-expanded", "false");
+    }
+
+    function setDateInputErrorState(input, trigger, tooltip, message) {
+      if (input) {
+        input.classList.add("is-invalid");
+        input.setAttribute("aria-invalid", "true");
+        if (tooltip && tooltip.id) {
+          input.setAttribute("aria-describedby", tooltip.id);
+        }
+      }
+
+      if (trigger) {
+        trigger.hidden = false;
+        trigger.classList.add("is-visible");
+      }
+
+      if (tooltip) {
+        tooltip.textContent = message;
+      }
+    }
+
+    function clearDateInputErrorState(input, trigger, tooltip) {
+      if (input) {
+        input.classList.remove("is-invalid");
+        input.removeAttribute("aria-invalid");
+        input.removeAttribute("aria-describedby");
+      }
+
+      if (trigger) {
+        trigger.classList.remove("is-visible");
+        trigger.hidden = true;
+      }
+
+      if (tooltip) {
+        tooltip.textContent = "";
+      }
+
+      hideDateTooltip(trigger, tooltip);
+    }
+
+    function bindDateErrorTrigger(trigger, tooltip) {
+      if (!trigger || !tooltip) {
+        return;
+      }
+
+      trigger.addEventListener("mouseenter", function() {
+        showDateTooltip(trigger, tooltip);
+      });
+
+      trigger.addEventListener("mouseleave", function() {
+        hideDateTooltip(trigger, tooltip);
+      });
+
+      trigger.addEventListener("focus", function() {
+        showDateTooltip(trigger, tooltip);
+      });
+
+      trigger.addEventListener("blur", function() {
+        hideDateTooltip(trigger, tooltip);
+      });
+
+      trigger.addEventListener("click", function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (tooltip.classList.contains("is-visible")) {
+          hideDateTooltip(trigger, tooltip);
+        } else {
+          showDateTooltip(trigger, tooltip);
+        }
+      });
+
+      trigger.addEventListener("keydown", function(event) {
+        if (event.key === "Escape") {
+          hideDateTooltip(trigger, tooltip);
+        }
+      });
+    }
+
+    bindDateErrorTrigger(startDateErrorTrigger, startDateErrorTooltip);
+    bindDateErrorTrigger(endDateErrorTrigger, endDateErrorTooltip);
+
+    document.addEventListener("click", function(event) {
+      if (
+        startDateErrorTrigger &&
+        startDateErrorTooltip &&
+        !startDateErrorTrigger.contains(event.target) &&
+        !startDateErrorTooltip.contains(event.target)
+      ) {
+        hideDateTooltip(startDateErrorTrigger, startDateErrorTooltip);
+      }
+
+      if (
+        endDateErrorTrigger &&
+        endDateErrorTooltip &&
+        !endDateErrorTrigger.contains(event.target) &&
+        !endDateErrorTooltip.contains(event.target)
+      ) {
+        hideDateTooltip(endDateErrorTrigger, endDateErrorTooltip);
+      }
+    });
 
     function parseStrictIsoDate(value) {
       if (!value) {
@@ -1985,29 +2201,13 @@ require __DIR__ . "/../template/footer.php";
     }
 
     function showDateValidation(message) {
-      if (dateValidationFeedback) {
-        dateValidationFeedback.textContent = message;
-        dateValidationFeedback.style.display = "block";
-      }
-      if (startDateInput) {
-        startDateInput.classList.add("is-invalid");
-      }
-      if (endDateInput) {
-        endDateInput.classList.add("is-invalid");
-      }
+      setDateInputErrorState(startDateInput, startDateErrorTrigger, startDateErrorTooltip, message);
+      setDateInputErrorState(endDateInput, endDateErrorTrigger, endDateErrorTooltip, message);
     }
 
     function clearDateValidation() {
-      if (dateValidationFeedback) {
-        dateValidationFeedback.textContent = "";
-        dateValidationFeedback.style.display = "none";
-      }
-      if (startDateInput) {
-        startDateInput.classList.remove("is-invalid");
-      }
-      if (endDateInput) {
-        endDateInput.classList.remove("is-invalid");
-      }
+      clearDateInputErrorState(startDateInput, startDateErrorTrigger, startDateErrorTooltip);
+      clearDateInputErrorState(endDateInput, endDateErrorTrigger, endDateErrorTooltip);
     }
 
     function validateDateRangeInputs() {
