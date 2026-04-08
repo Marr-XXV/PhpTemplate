@@ -468,7 +468,7 @@ $usePersistedFilters = isset($noData) && $noData;
       <div class="col-12">
         <div id="report-generated-section" class="card rg-container-css">
           <div class="card-header d-flex justify-content-between align-items-center">
-            <h3 class="mb-0">Report Generated</h3>
+            <h3 class="mb-0">Generated Report</h3>
             <?php
             $canExport = !empty($reportRows) && empty($queryError) && empty($aggregatedValidationError);
             ?>
@@ -936,6 +936,13 @@ require __DIR__ . "/../template/footer.php";
 
   .rg-container-css {
     box-shadow: rgba(60, 64, 67, 0.3) 0px 1px 2px 0px, rgba(60, 64, 67, 0.15) 0px 2px 6px 2px;
+    border-radius: 30px;
+    overflow: hidden;
+  }
+
+  .rg-container-css .card-header {
+    border-top-left-radius: 30px;
+    border-top-right-radius: 30px;
   }
 
   .report-generated-body {
