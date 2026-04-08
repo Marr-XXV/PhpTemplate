@@ -15,10 +15,10 @@
         name="keywords"
         content="admin template, viho admin template, dashboard template, flat admin template, responsive admin template, web app" />
     <meta name="author" content="pixelstrap" />
-    <link rel="icon" href="<?= assets('assets/images/favicon.png'); ?>" type="image/x-icon" />
+    <link rel="icon" href="<?= assets('assets/images/logo/BIGGS_LOGO.png'); ?>" type="image/x-icon" />
     <link
         rel="shortcut icon"
-        href="<?= assets('assets/images/favicon.png'); ?>"
+        href="<?= assets('assets/images/logo/BIGGS_LOGO.png'); ?>"
         type="image/x-icon" />
     <title>BIGGS - BMS</title>
     <!-- Google font-->
