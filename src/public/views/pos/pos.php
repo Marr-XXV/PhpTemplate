@@ -1750,6 +1750,14 @@ require __DIR__ . "/../template/footer.php";
       var dropdown = wrapper.querySelector(".multi-select-dropdown");
       var select = wrapper.querySelector("select.multi-select-hidden");
       var options = dropdown.querySelectorAll(".multi-select-option");
+      var optionMeta = Array.prototype.map.call(options, function(option, index) {
+        return {
+          option: option,
+          index: index,
+          text: option.textContent.trim(),
+          lowerText: option.textContent.toLowerCase().trim()
+        };
+      });
 
       // Create modal overlay and modal
       var modalOverlay = document.createElement("div");
@@ -1985,16 +1993,80 @@ require __DIR__ . "/../template/footer.php";
         select.dispatchEvent(new Event("change", { bubbles: true }));
       }
 
+      function getMatchRank(optionLowerText, term) {
+        if (!term) {
+          return 0;
+        }
+
+        if (optionLowerText.indexOf(term) === 0) {
+          return 0;
+        }
+
+        if (
+          optionLowerText.indexOf(" " + term) !== -1 ||
+          optionLowerText.indexOf("-" + term) !== -1 ||
+          optionLowerText.indexOf("_" + term) !== -1 ||
+          optionLowerText.indexOf("/" + term) !== -1
+        ) {
+          return 1;
+        }
+
+        if (optionLowerText.indexOf(term) !== -1) {
+          return 2;
+        }
+
+        return -1;
+      }
+
       function filter() {
-        var term = input.value.toLowerCase();
-        options.forEach(function(option) {
-          var text = option.textContent.toLowerCase();
-          if (text.indexOf(term) !== -1 && !option.classList.contains("selected")) {
-            option.style.display = "";
-          } else if (option.classList.contains("selected")) {
-            option.style.display = "";
-          } else {
+        var term = input.value.toLowerCase().trim();
+        var matchedUnselectedOptions = [];
+
+        optionMeta.forEach(function(meta) {
+          var option = meta.option;
+          var isSelected = option.classList.contains("selected");
+          var rank = getMatchRank(meta.lowerText, term);
+
+          if (isSelected) {
+            option.style.display = term ? "none" : "";
+            return;
+          }
+
+          if (rank === -1) {
             option.style.display = "none";
+            return;
+          }
+
+          option.style.display = "";
+          matchedUnselectedOptions.push({
+            meta: meta,
+            rank: rank
+          });
+        });
+
+        matchedUnselectedOptions
+          .sort(function(a, b) {
+            if (a.rank !== b.rank) {
+              return a.rank - b.rank;
+            }
+
+            var labelComparison = a.meta.text.localeCompare(b.meta.text, undefined, {
+              sensitivity: "base"
+            });
+
+            if (labelComparison !== 0) {
+              return labelComparison;
+            }
+
+            return a.meta.index - b.meta.index;
+          })
+          .forEach(function(item) {
+            dropdown.appendChild(item.meta.option);
+          });
+
+        optionMeta.forEach(function(meta) {
+          if (meta.option.classList.contains("selected")) {
+            dropdown.appendChild(meta.option);
           }
         });
       }
